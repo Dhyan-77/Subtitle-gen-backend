@@ -1,0 +1,10 @@
+anyio
+fastapi
+uvicorn
+python-multipart
+numpy
+torch
+openai-whisper
+regex
+soundfile
+tqdm
