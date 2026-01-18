@@ -1,8 +1,10 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
 fastapi
 uvicorn
 python-multipart
 numpy
-torch
+torch==2.2.2+cpu
 openai-whisper
 regex
 soundfile
