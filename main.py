@@ -1,14 +1,17 @@
 from fastapi import FastAPI, UploadFile, File
-import shutil
-from pathlib import Path
-from pipline import pipline_do
-from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.concurrency import run_in_threadpool
+from pathlib import Path
+import shutil
+from pipline import pipline_do  # your existing FFmpeg/Whisper pipeline
 
+# ----------------------------
+# Configuration
+# ----------------------------
 app = FastAPI()
 
-
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -20,17 +23,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Directories for temp storage
+UPLOAD_DIR = Path("/tmp/uploads")
+OUTPUT_DIR = Path("/tmp/output")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-UPLOAD_DIR = Path("uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
+# Expose output folder
+app.mount("/output", StaticFiles(directory=str(OUTPUT_DIR)), name="output")
 
-OUTPUT_DIR = Path("output")
-OUTPUT_DIR.mkdir(exist_ok=True)
+# Base URL for download links (change to your Render URL)
+BASE_URL = "https://subtitle-gen-backend-7.onrender.com"
 
-# expose output folder
-app.mount("/output", StaticFiles(directory="output"), name="output")
-
-
+# ----------------------------
+# Routes
+# ----------------------------
 @app.get("/")
 def health():
     return {"status": "running"}
@@ -38,26 +45,33 @@ def health():
 
 @app.post("/generate")
 async def generate_subtitles(file: UploadFile = File(...)):
-    # save uploaded video
-    input_path = UPLOAD_DIR / file.filename
+    try:
+        # Save uploaded video to temp folder
+        input_path = UPLOAD_DIR / file.filename
+        with open(input_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
 
-    with open(input_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+        # Run FFmpeg/Whisper pipeline in a thread
+        output_video_path = await run_in_threadpool(
+            pipline_do,
+            str(input_path),
+            str(OUTPUT_DIR)
+        )
 
-    # run pipeline
-    output_video_path = await run_in_threadpool(
-        pipline_do,
-        str(input_path),
-        str(OUTPUT_DIR)
-    )
+        # Get only filename
+        output_filename = Path(output_video_path).name
 
-    # filename only (for frontend)
-    output_filename = Path(output_video_path).name
+        # Return download URL
+        return {
+            "status": "completed",
+            "download_url": f"{BASE_URL}/output/{output_filename}"
+        }
 
-    return {
-        "status": "completed",
-        "download_url": f"http://localhost:8000/output/{output_filename}"
-    }
-
-
-
+    except Exception as e:
+        # Return error info for debugging
+        import traceback
+        return {
+            "status": "error",
+            "message": str(e),
+            "trace": traceback.format_exc()
+        }
