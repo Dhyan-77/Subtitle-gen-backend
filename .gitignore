@@ -1,15 +1,9 @@
-# Python
-__pycache__/
-*.pyc
 venv/
-
-# Generated files
+__pycache__/
 uploads/
 output/
-audio.wav
 *.mp4
+*.wav
 *.ass
 *.srt
-
-# OS
-.DS_Store
+.env

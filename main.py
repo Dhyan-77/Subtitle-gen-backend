@@ -12,7 +12,7 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://bigdih.netlify.app",
+        "https://bigdihs.netlify.app",
         "http://localhost:5173"
     ],
     allow_credentials=True,

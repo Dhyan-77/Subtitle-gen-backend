@@ -1,4 +1,3 @@
-anyio
 fastapi
 uvicorn
 python-multipart
